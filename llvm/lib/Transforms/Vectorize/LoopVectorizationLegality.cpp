@@ -95,8 +95,6 @@ bool LoopVectorizeHints::Hint::validate(unsigned Val) {
   case HK_PREDICATE:
   case HK_SCALABLE:
     return (Val == 0 || Val == 1);
-  case HK_SCALAR_INTERPOLATION: //todo-si: write a better validation if it is needed
-    return (Val >= 0);
   }
   return false;
 }
@@ -107,7 +105,6 @@ LoopVectorizeHints::LoopVectorizeHints(const Loop *L,
                                        const TargetTransformInfo *TTI)
     : Width("vectorize.width", VectorizerParams::VectorizationFactor, HK_WIDTH),
       Interleave("interleave.count", InterleaveOnlyWhenForced, HK_INTERLEAVE),
-      ScalarInterpolation("scalar.interpolation.count", 0, HK_SCALAR_INTERPOLATION),
       Force("vectorize.enable", FK_Undefined, HK_FORCE),
       IsVectorized("isvectorized", 0, HK_ISVECTORIZED),
       Predicate("vectorize.predicate.enable", FK_Undefined, HK_PREDICATE),
@@ -229,8 +226,6 @@ void LoopVectorizeHints::emitRemarkWithHints() const {
           R << ", Vector Width=" << NV("VectorWidth", getWidth());
         if (getInterleave() != 0)
           R << ", Interleave Count=" << NV("InterleaveCount", getInterleave());
-        if (getScalarInterpolation() != 0)
-          R << ", Scalar Interpolation Count=" << NV("ScalarInterpolationCount", getScalarInterpolation());
         R << ")";
       }
       return R;
@@ -304,7 +299,7 @@ void LoopVectorizeHints::setHint(StringRef Name, Metadata *Arg) {
   unsigned Val = C->getZExtValue();
 
   Hint *Hints[] = {&Width,        &Interleave, &Force,
-                   &IsVectorized, &Predicate,  &Scalable, &ScalarInterpolation};
+                   &IsVectorized, &Predicate,  &Scalable};
   for (auto *H : Hints) {
     if (Name == H->Name) {
       if (H->validate(Val))

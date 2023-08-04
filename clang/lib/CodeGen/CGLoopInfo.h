@@ -64,9 +64,6 @@ struct LoopAttributes {
   /// Value for llvm.loop.interleave.count metadata.
   unsigned InterleaveCount;
 
-  /// Value for llvm.loop.scalar.interpolation.count metadata.
-  unsigned ScalarInterpolationCount;
-
   /// llvm.unroll.
   unsigned UnrollCount;
 
@@ -266,11 +263,6 @@ public:
 
   void setVectorizeScalable(const LoopAttributes::LVEnableState &State) {
     StagedAttrs.VectorizeScalable = State;
-  }
-
-  void setScalarInterpolationCount(unsigned C) {
-
-    StagedAttrs.ScalarInterpolationCount = C;
   }
 
   /// Set the interleave count for the next loop pushed.

@@ -342,7 +342,6 @@ public:
     VPInterleaveSC,
     VPReductionSC,
     VPReplicateSC,
-    VPInterpolateSC,
     VPScalarIVStepsSC,
     VPWidenCallSC,
     VPWidenCanonicalIVSC,

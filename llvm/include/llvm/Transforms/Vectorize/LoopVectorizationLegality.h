@@ -65,8 +65,7 @@ class LoopVectorizeHints {
     HK_FORCE,
     HK_ISVECTORIZED,
     HK_PREDICATE,
-    HK_SCALABLE,
-    HK_SCALAR_INTERPOLATION
+    HK_SCALABLE
   };
 
   /// Hint - associates name and validation with the hint value.
@@ -86,9 +85,6 @@ class LoopVectorizeHints {
 
   /// Vectorization interleave factor.
   Hint Interleave;
-
-  /// Scalar Interpolation factor.
-  Hint ScalarInterpolation;
 
   /// Vectorization forced
   Hint Force;
@@ -152,9 +148,6 @@ public:
     if (llvm::hasUnrollTransformation(TheLoop) & TM_Disable)
       return 1;
     return 0;
-  }
-  unsigned getScalarInterpolation() const {
-    return (ScalarInterpolation.Value) ? ScalarInterpolation.Value : 2; //todo-si: change the default to 0
   }
   unsigned getIsVectorized() const { return IsVectorized.Value; }
   unsigned getPredicate() const { return Predicate.Value; }
