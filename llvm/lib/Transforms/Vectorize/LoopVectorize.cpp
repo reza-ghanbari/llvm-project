@@ -10245,7 +10245,7 @@ std::pair<DenseMap<Value*, OperationNode*>, int> ScalarInterpolationCostModel::g
   bool HasUnprocessedRecipe = true;
   DenseMap<Value*, OperationNode*> ScheduleMap;
   SmallVector<OperationNode*> WorkingList;
-  while (HasUnprocessedRecipe) {
+  while (HasUnprocessedRecipe || WorkingList.size() != ScheduleMap.size()) {
     HasUnprocessedRecipe = false;
     for (VPBasicBlock *SIVPBB :
              reverse(VPBlockUtils::blocksOnly<VPBasicBlock>(RPOT))) {
@@ -10268,7 +10268,7 @@ std::pair<DenseMap<Value*, OperationNode*>, int> ScalarInterpolationCostModel::g
         for (auto Pred: Node->getPredecessors()) {
           Pred->addSuccessor(Node);
         }
-        FinalTime = (FinalTime > Time) ? FinalTime : Time;
+        FinalTime = (FinalTime > Node->getEndTime()) ? FinalTime : Node->getEndTime();
       }
     }
     Time++;
@@ -10353,8 +10353,10 @@ unsigned ScalarInterpolationCostModel::getSIFactor(VPlan& Plan, unsigned int Use
       BestScheduleLength = GreedySchedule.second;
       NumOfIterations = VFValue + SIFactor;
     }
-    Schedules.push_back(ScalarSchedule.first);
     SIFactor += 1;
+    auto NewSchedule = deepCopySchedule(ScalarSchedule.first);
+    setSIFactorForScheduleMap(NewSchedule, SIFactor);
+    Schedules.push_back(NewSchedule);
   }
   return SIFactor - 1;
 }
@@ -10416,16 +10418,18 @@ std::pair<SmallSet<OperationNode*, 30>, int> ScalarInterpolationCostModel::repea
   }
   auto BestSchedule = runListScheduling(CopiedSchedules, ScheduleLength, 1);
 
-  SmallVector<OperationNode*> Nodes(BestSchedule.first.begin(), BestSchedule.first.end());
-  llvm::sort(Nodes, [](OperationNode* A, OperationNode* B) {
-    return A->getStartTime() < B->getStartTime()
-           || (A->getStartTime() == B->getStartTime() && A->getEndTime() < B->getEndTime());
-  });
-  LLVM_DEBUG(dbgs() << "\n\n\n\nSI: SCHEDULE\n");
-  for (auto Node: Nodes) {
-    LLVM_DEBUG(dbgs() << "SI: Node: " << *Node->getInstruction() << "\n\tStart: " << Node->getStartTime() << " End: " << Node->getEndTime() << "\n");
-  }
-  LLVM_DEBUG(dbgs() << "SI: END OF SCHEDULE\n\n\n\n");
+//  Printing the best schedule
+//  SmallVector<OperationNode*> Nodes(BestSchedule.first.begin(), BestSchedule.first.end());
+//  llvm::sort(Nodes, [](OperationNode* A, OperationNode* B) {
+//    return A->getStartTime() < B->getStartTime()
+//           || (A->getStartTime() == B->getStartTime() && A->getEndTime() < B->getEndTime());
+//  });
+//  LLVM_DEBUG(dbgs() << "\n\n\n\nSI: SCHEDULE\n");
+//  for (auto Node: Nodes) {
+//    LLVM_DEBUG(dbgs() << "SI: Node: " << *Node->getInstruction() << "\n\tStart: " << Node->getStartTime() << " End: " << Node->getEndTime() << "\n");
+//  }
+//  LLVM_DEBUG(dbgs() << "SI: END OF SCHEDULE\n\n\n\n");
+
   int MinScheduleLength = BestSchedule.second;
   int StableScheduleLengthCounter = 0;
   for (int i = 1; i < Budget && StableScheduleLengthCounter < StabilityLimit; i++) {
@@ -10495,6 +10499,9 @@ std::pair<SmallSet<OperationNode*, 30>, int> ScalarInterpolationCostModel::runLi
         ScheduleList.insert(Node);
         ResHandler->setResourceAvailable(ExecutionList[Node]);
         ExecutionList.erase(Node);
+//        The successors of a node with 0 cost are already added to the ReadyList.
+        if (Node->getDuration() == 0)
+          continue;
         for (auto Successor: Node->getSuccessors()) {
           if (all_of(Successor->getPredecessors(), [&ScheduleList, &ExecutionList, Cycle](auto& Item)
                      { return (ScheduleList.contains(Item) || ExecutionList.contains(Item)) && Item->getEndTime() <= Cycle; }))
